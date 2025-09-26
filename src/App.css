@@ -1,0 +1,40 @@
+#root {
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.button {
+    background-color: #7f9ccb;
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px ridge black;
+    font-size: 0.8rem;
+    height: auto;
+}
+
+.card {
+  padding: 2em;
+}
+
+pre {
+  text-align: left;
+}
+
+.gltfRoot {
+  display: flex;
+  flex-direction: row;
+}
+
+.gltfNode {
+  padding: 1em;
+}
+
+.gltfLine {
+  margin: 0;
+  font-family: monospace;
+  white-space: pre;
+}
+
+.highlighted {
+  background-color: #747bff;
+}
