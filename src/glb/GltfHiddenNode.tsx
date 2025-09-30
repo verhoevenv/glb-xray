@@ -10,14 +10,15 @@ interface Props {
 
 function GltfHiddenNode({
   name,
+  gltf,
   highlighted,
   onOpen
 }: Props) {
   const shouldHighlight = highlighted && (name === highlighted.elements[0]);
   const className = shouldHighlight ? "hiddenNode highlighted" : "hiddenNode";
-  // TODO show source on hover?
+  const sourceAsString = gltf.annotatedSource.map(frag => frag.content).join("\n");
   return (
-    <div key={name} className={className} onClick={onOpen}>
+    <div key={name} className={className} onClick={onOpen} title={sourceAsString}>
       {name}
     </div>
   );
