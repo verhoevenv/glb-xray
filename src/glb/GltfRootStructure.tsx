@@ -1,12 +1,20 @@
-import type { GLTFRoot } from "./GLTF.ts";
+import type {GLTFRoot} from "./GLTF.ts";
 import GltfBareJsonStructure from "./GltfBareJsonStructure.tsx";
-import { useState } from "react";
+import {useState} from "react";
+import GltfHiddenNode from "./GltfHiddenNode.tsx";
+import {SourcePath} from "../annotation/AnnotatedSource.ts";
 
-interface GltfStructureProps {
+interface Props {
   gltf: GLTFRoot;
 }
 
+const initiallyHidden = new Set([
+  "asset"
+]);
+
 const preferredOrder = [
+  "extensionsRequired",
+  "extensionsUsed",
   "asset",
   "scene",
   "scenes",
@@ -33,12 +41,12 @@ function sortAttributes(nodes: { name: string }[]) {
   });
 }
 
-function GltfRootStructure({ gltf }: GltfStructureProps) {
-  const [highlighted, setHighlighted] = useState<string[] | null>(null);
+function GltfRootStructure({ gltf }: Props) {
+  const [highlighted, setHighlighted] = useState<SourcePath | null>(null);
+  const [hiddenNodeNames, setHiddenNodeNames] = useState<Set<string>>(initiallyHidden);
 
   const children = [];
-  let gltfElement: keyof GLTFRoot;
-  for (gltfElement in gltf) {
+  for (const gltfElement in gltf) {
     const attribute = gltf[gltfElement];
     if (attribute) {
       children.push({
@@ -48,21 +56,52 @@ function GltfRootStructure({ gltf }: GltfStructureProps) {
     }
   }
 
-  sortAttributes(children);
+  const hiddenChildren = [];
+  for (const nodeName of hiddenNodeNames) {
+    const idx = children.findIndex(v => v.name === nodeName);
+    if (idx >= 0) {
+      const [elem] = children.splice(idx, 1);
+      hiddenChildren.push(elem);
+    }
+  }
 
-  const listItems = children.map((child) => {
-    return (
-      <GltfBareJsonStructure
-        key={child.name}
-        gltf={child.node}
-        name={child.name}
-        highlighted={highlighted}
-        setHighlighted={setHighlighted}
-      />
-    );
+  sortAttributes(children);
+  sortAttributes(hiddenChildren);
+
+  const hiddenItems = hiddenChildren.map((child) => {
+    return <GltfHiddenNode
+      key={child.name}
+      gltf={child.node}
+      name={child.name}
+      highlighted={highlighted}
+      onOpen={() => {
+        const newHiddenNodes = new Set(hiddenNodeNames);
+        newHiddenNodes.delete(child.name);
+        setHiddenNodeNames(newHiddenNodes);
+      }}
+    />;
   });
 
-  return <div className="gltfRoot">{listItems}</div>;
+  const listItems = children.map((child) => {
+    return <GltfBareJsonStructure
+      key={child.name}
+      gltf={child.node}
+      name={child.name}
+      highlighted={highlighted}
+      setHighlighted={setHighlighted}
+      onClose={() => {
+        const newHiddenNodes = new Set(hiddenNodeNames);
+        newHiddenNodes.add(child.name);
+        setHiddenNodeNames(newHiddenNodes);
+      }}
+    />;
+  });
+
+
+  return <>
+          <div className="gltfRoot">{hiddenItems}</div>
+          <div className="gltfRoot">{listItems}</div>
+        </>;
 }
 
 export default GltfRootStructure;

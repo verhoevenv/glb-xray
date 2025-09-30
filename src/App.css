@@ -29,6 +29,11 @@ pre {
   padding: 1em;
 }
 
+.hiddenNode {
+    padding: 1em;
+    background: #535bf2;
+}
+
 .gltfLine {
   margin: 0;
   font-family: monospace;
@@ -37,4 +42,8 @@ pre {
 
 .highlighted {
   background-color: #747bff;
+}
+
+.outgoing {
+    text-decoration: underline;
 }

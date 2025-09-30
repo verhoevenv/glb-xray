@@ -1,10 +1,6 @@
-import type { AnnotatedSource, GLTFNode } from "./GLTF.ts";
-import parse, {
-  type ArrayNode,
-  type LiteralNode,
-  type ObjectNode,
-  type ValueNode,
-} from "json-to-ast";
+import type {GLTFNode} from "./GLTF.ts";
+import parse, {type ArrayNode, type LiteralNode, type ObjectNode, type ValueNode,} from "json-to-ast";
+import {type AnnotatedSource, SourcePath} from "../annotation/AnnotatedSource.ts";
 
 export function annotate(
   gltfJson: string,
@@ -30,7 +26,7 @@ function annotateByJsonParse(gltfJson: string): Record<string, GLTFNode> {
     const annotatedSource = prettyPrinted.split("\n").map((line) => {
       return {
         content: line,
-        path: [""],
+        path: new SourcePath([""]),
         refersTo: null,
       };
     });
@@ -62,28 +58,28 @@ function extractChildren(gltf: ObjectNode): Record<string, GLTFNode> {
   return children;
 }
 
-type ReferenceMapper = (rawValue: string) => string[] | null;
+type ReferenceMapper = (rawValue: string) => SourcePath | null;
 
 function noReference(): ReferenceMapper {
   return () => null;
 }
 
 function indexesIn(prefix: string): ReferenceMapper {
-  return (rawValue: string) => [prefix, rawValue];
+  return (rawValue: string) => new SourcePath([prefix, rawValue]);
 }
 
-function getReferenceMapper(path: string[]) {
+function getReferenceMapper(path: SourcePath) {
   const anIndex = null;
   const aProperty = null;
   function matches(
-    path: string[],
+    path: SourcePath,
     ...queryElements: (string | null)[]
   ): boolean {
-    if (path.length !== queryElements.length) {
+    if (path.elements.length !== queryElements.length) {
       return false;
     }
-    for (let i = 0; i < path.length; i++) {
-      const pathElement = path[i];
+    for (let i = 0; i < path.elements.length; i++) {
+      const pathElement = path.elements[i];
       const queryElement = queryElements[i];
       if (queryElement && pathElement !== queryElement) {
         return false;
@@ -134,7 +130,7 @@ function getReferenceMapper(path: string[]) {
   return noReference();
 }
 
-function convert(ast: ValueNode, path: string[]): AnnotatedSource {
+function convert(ast: ValueNode, path: SourcePath): AnnotatedSource {
   switch (ast.type) {
     case "Array":
       return convertArray(ast, path);
@@ -145,10 +141,10 @@ function convert(ast: ValueNode, path: string[]): AnnotatedSource {
   }
 }
 
-function convertArray(ast: ArrayNode, path: string[]): AnnotatedSource {
+function convertArray(ast: ArrayNode, path: SourcePath): AnnotatedSource {
   const children = ast.children;
   const childSources = children.map((child, idx) => {
-    return convert(child, [...path, "" + idx]);
+    return convert(child, path.extend("" + idx));
   });
 
   for (let i = 0; i < childSources.length - 1; i++) {
@@ -177,21 +173,21 @@ function convertArray(ast: ArrayNode, path: string[]): AnnotatedSource {
   ];
 }
 
-function convertObject(ast: ObjectNode, path: string[]): AnnotatedSource {
+function convertObject(ast: ObjectNode, path: SourcePath): AnnotatedSource {
   const children = ast.children;
   const childSources = children
     .map((child) => {
       return {
         rawKey: child.key.raw,
         key: child.key.value,
-        value: convert(child.value, [...path, child.key.value]),
+        value: convert(child.value, path.extend(child.key.value)),
       };
     })
     .map(({ rawKey, key, value }) => {
       return [
         {
           content: `${rawKey}: ${value[0].content}`,
-          path: [...path, key],
+          path: path.extend(key),
           refersTo: value[0].refersTo,
         },
         ...value.slice(1),
@@ -224,7 +220,7 @@ function convertObject(ast: ObjectNode, path: string[]): AnnotatedSource {
   ];
 }
 
-function convertLiteral(ast: LiteralNode, path: string[]): AnnotatedSource {
+function convertLiteral(ast: LiteralNode, path: SourcePath): AnnotatedSource {
   const referenceMapper = getReferenceMapper(path);
   const reference = referenceMapper(ast.raw);
 
@@ -241,7 +237,7 @@ function makeNode(
   attributeName: string,
   attributeElement: ValueNode,
 ): GLTFNode {
-  const annotatedSourceFragments = convert(attributeElement, [attributeName]);
+  const annotatedSourceFragments = convert(attributeElement, new SourcePath([attributeName]));
   return {
     annotatedSource: annotatedSourceFragments,
   };

@@ -1,11 +1,13 @@
 import type { GLTFNode } from "./GLTF.ts";
 import GltfLine from "./GltfLine.tsx";
+import type {SourcePath} from "../annotation/AnnotatedSource.ts";
 
-interface GltfStructureProps {
+interface Props {
   name: string;
   gltf: GLTFNode;
-  highlighted: string[] | null;
-  setHighlighted: (name: string[] | null) => void;
+  highlighted: SourcePath | null;
+  setHighlighted: (name: SourcePath | null) => void;
+  onClose: () => void;
 }
 
 function GltfBareJsonStructure({
@@ -13,23 +15,22 @@ function GltfBareJsonStructure({
   name,
   highlighted,
   setHighlighted,
-}: GltfStructureProps) {
+  onClose,
+}: Props) {
   const source = gltf.annotatedSource;
   const lines = source.map((line, idx) => {
     return (
       <GltfLine
         key={idx}
-        content={line.content}
-        onMouseEnter={() => setHighlighted(line.refersTo)}
-        onMouseLeave={() => setHighlighted(null)}
-        path={line.path}
+        fragment={line}
         highlighted={highlighted}
+        setHighlighted={setHighlighted}
       />
     );
   });
   return (
     <div key={name} className="gltfNode">
-      <h2>{name}</h2>
+      <h2 onClick={onClose}>{name}</h2>
       {lines}
     </div>
   );
