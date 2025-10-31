@@ -2,7 +2,8 @@ import type {GLTFRoot} from "./GLTF.ts";
 import GltfBareJsonStructure from "./GltfBareJsonStructure.tsx";
 import {useState} from "react";
 import GltfHiddenNode from "./GltfHiddenNode.tsx";
-import {SourcePath} from "../annotation/AnnotatedSource.ts";
+
+import {SourcePath} from "../annotation/SourcePath.ts";
 
 interface Props {
   gltf: GLTFRoot;

@@ -1,4 +1,5 @@
-import {type AnnotatedSourceFragment, SourcePath} from "../annotation/AnnotatedSource.ts";
+import type {AnnotatedSourceFragment} from "../annotation/AnnotatedSource.ts";
+import type {SourcePath} from "../annotation/SourcePath.ts";
 
 interface Props {
   fragment: AnnotatedSourceFragment;

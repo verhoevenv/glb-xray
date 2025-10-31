@@ -1,6 +1,7 @@
 import type {GLTFNode} from "./GLTF.ts";
 import parse, {type ArrayNode, type LiteralNode, type ObjectNode, type ValueNode,} from "json-to-ast";
-import {type AnnotatedSource, SourcePath} from "../annotation/AnnotatedSource.ts";
+import {type AnnotatedSource} from "../annotation/AnnotatedSource.ts";
+import {SourcePath} from "../annotation/SourcePath.ts";
 
 export function annotate(
   gltfJson: string,
@@ -25,6 +26,7 @@ function annotateByJsonParse(gltfJson: string): Record<string, GLTFNode> {
     const prettyPrinted = JSON.stringify(attributeElement, null, 2);
     const annotatedSource = prettyPrinted.split("\n").map((line) => {
       return {
+        indentLevel: 0,
         content: line,
         path: new SourcePath([""]),
         refersTo: null,
@@ -71,74 +73,105 @@ function indexesIn(prefix: string): ReferenceMapper {
 function getReferenceMapper(path: SourcePath) {
   const anIndex = null;
   const aProperty = null;
-  function matches(
-    path: SourcePath,
-    ...queryElements: (string | null)[]
-  ): boolean {
-    if (path.elements.length !== queryElements.length) {
-      return false;
-    }
-    for (let i = 0; i < path.elements.length; i++) {
-      const pathElement = path.elements[i];
-      const queryElement = queryElements[i];
-      if (queryElement && pathElement !== queryElement) {
-        return false;
-      }
-    }
-    return true;
-  }
 
-  if (matches(path, "scene")) {
+  if (path.matches("scene")) {
     return indexesIn("scenes");
   }
-  if (matches(path, "scenes", anIndex, "nodes", anIndex)) {
+  if (path.matches("scenes", anIndex, "nodes", anIndex)) {
     return indexesIn("nodes");
   }
-  if (matches(path, "nodes", anIndex, "mesh")) {
+  if (path.matches("nodes", anIndex, "children", anIndex)) {
+    return indexesIn("nodes");
+  }
+  if (path.matches("nodes", anIndex, "mesh")) {
     return indexesIn("meshes");
   }
-  if (matches(path, "meshes", anIndex, "primitives", anIndex, "attributes", aProperty)) {
+  if (path.matches("meshes", anIndex, "primitives", anIndex, "attributes", aProperty)) {
     return indexesIn("accessors");
   }
-  if (matches(path, "meshes", anIndex, "primitives", anIndex, "indices")) {
+  if (path.matches("meshes", anIndex, "primitives", anIndex, "indices")) {
     return indexesIn("accessors");
   }
-  if (matches(path, "meshes", anIndex, "primitives", anIndex, "material")) {
+  if (path.matches("meshes", anIndex, "primitives", anIndex, "material")) {
     return indexesIn("materials");
   }
-  if (matches(path, "materials", anIndex, "pbrMetallicRoughness", "baseColorTexture", "index")) {
+  if (path.matches("materials", anIndex, "pbrMetallicRoughness", "baseColorTexture", "index")) {
     return indexesIn("textures");
   }
-  if (matches(path, "materials", anIndex, "pbrMetallicRoughness", "metallicRoughnessTexture", "index")) {
+  if (path.matches("materials", anIndex, "pbrMetallicRoughness", "metallicRoughnessTexture", "index")) {
     return indexesIn("textures");
   }
-  if (matches(path, "materials", anIndex, "normalTexture", "index")) {
+  if (path.matches("materials", anIndex, "normalTexture", "index")) {
     return indexesIn("textures");
   }
-  if (matches(path, "textures", anIndex, "source")) {
+  if (path.matches("textures", anIndex, "source")) {
     return indexesIn("images");
   }
-  if (matches(path, "images", anIndex, "bufferView")) {
+  if (path.matches("images", anIndex, "bufferView")) {
     return indexesIn("bufferViews");
   }
-  if (matches(path, "accessors", anIndex, "bufferView")) {
+  if (path.matches("accessors", anIndex, "bufferView")) {
     return indexesIn("bufferViews");
   }
-  if (matches(path, "bufferViews", anIndex, "buffer")) {
+  if (path.matches("bufferViews", anIndex, "buffer")) {
     return indexesIn("buffers");
   }
   return noReference();
 }
 
+function cleanup(annotatedSource: AnnotatedSource, path: SourcePath): AnnotatedSource {
+  if (path.matches("nodes", null, "matrix")) {
+    // matrix should have 18 children: opening "[", 4 x 4 elements, closing "]"
+    if (annotatedSource.length != 18) {
+      // if it doesn't have 18 children, let's stay away from it
+      return annotatedSource;
+    }
+    annotatedSource[16].content += " "; // offset missing comma after last element
+    const columnWidths = [0, 0, 0, 0];
+    for (let rowIdx = 0; rowIdx < 4; rowIdx++) {
+      for (let colIdx = 0; colIdx < 4; colIdx++) {
+        columnWidths[colIdx] = Math.max(columnWidths[colIdx], annotatedSource[rowIdx*4 + colIdx + 1].content.length);
+      }
+    }
+    for (let i = 0; i < 4; i++) {
+      columnWidths[i] = columnWidths[i] + 1;
+    }
+    const matrixLines = [];
+    for (let i = 0; i < 4; i++) {
+      const joinedLine =
+        annotatedSource[i * 4 + 1].content.padStart(columnWidths[0]) +
+        annotatedSource[i * 4 + 2].content.padStart(columnWidths[1]) +
+        annotatedSource[i * 4 + 3].content.padStart(columnWidths[2]) +
+        annotatedSource[i * 4 + 4].content.padStart(columnWidths[3])
+      matrixLines.push( {
+        ...annotatedSource[i*4 + 1],
+        path: path,
+        content: joinedLine
+      })
+    }
+    return [
+      annotatedSource[0],
+      ...matrixLines,
+      annotatedSource[17],
+    ]
+  }
+  return annotatedSource;
+}
+
 function convert(ast: ValueNode, path: SourcePath): AnnotatedSource {
+  let annotatedSource;
   switch (ast.type) {
     case "Array":
-      return convertArray(ast, path);
+      annotatedSource = convertArray(ast, path);
+      break;
     case "Object":
-      return convertObject(ast, path);
+      annotatedSource = convertObject(ast, path);
+      break;
     case "Literal":
-      return convertLiteral(ast, path);
+      annotatedSource = convertLiteral(ast, path);
+      break;
   }
+  return cleanup(annotatedSource, path);
 }
 
 function convertArray(ast: ArrayNode, path: SourcePath): AnnotatedSource {
@@ -154,18 +187,19 @@ function convertArray(ast: ArrayNode, path: SourcePath): AnnotatedSource {
   const annotatedSourceFragments = childSources.flat();
 
   for (let i = 0; i < annotatedSourceFragments.length; i++) {
-    annotatedSourceFragments[i].content =
-      "  " + annotatedSourceFragments[i].content;
+    annotatedSourceFragments[i].indentLevel = annotatedSourceFragments[i].indentLevel + 1;
   }
 
   return [
     {
+      indentLevel: 0,
       content: "[",
       path: path,
       refersTo: null,
     },
     ...annotatedSourceFragments,
     {
+      indentLevel: 0,
       content: "]",
       path: path,
       refersTo: null,
@@ -186,6 +220,7 @@ function convertObject(ast: ObjectNode, path: SourcePath): AnnotatedSource {
     .map(({ rawKey, key, value }) => {
       return [
         {
+          indentLevel: value[0].indentLevel,
           content: `${rawKey}: ${value[0].content}`,
           path: path.extend(key),
           refersTo: value[0].refersTo,
@@ -201,18 +236,19 @@ function convertObject(ast: ObjectNode, path: SourcePath): AnnotatedSource {
   const annotatedSourceFragments = childSources.flat();
 
   for (let i = 0; i < annotatedSourceFragments.length; i++) {
-    annotatedSourceFragments[i].content =
-      "  " + annotatedSourceFragments[i].content;
+    annotatedSourceFragments[i].indentLevel = annotatedSourceFragments[i].indentLevel + 1;
   }
 
   return [
     {
+      indentLevel: 0,
       content: "{",
       path: path,
       refersTo: null,
     },
     ...annotatedSourceFragments,
     {
+      indentLevel: 0,
       content: "}",
       path: path,
       refersTo: null,
@@ -226,6 +262,7 @@ function convertLiteral(ast: LiteralNode, path: SourcePath): AnnotatedSource {
 
   return [
     {
+      indentLevel: 0,
       content: ast.raw,
       path: path,
       refersTo: reference,

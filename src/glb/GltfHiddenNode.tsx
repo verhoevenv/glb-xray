@@ -1,5 +1,6 @@
 import type {GLTFNode} from "./GLTF.ts";
-import {SourcePath} from "../annotation/AnnotatedSource.ts";
+
+import {SourcePath} from "../annotation/SourcePath.ts";
 
 interface Props {
   name: string;

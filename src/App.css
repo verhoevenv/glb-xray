@@ -40,9 +40,18 @@ pre {
   white-space: pre;
 }
 
-.highlighted {
-  background-color: #747bff;
+@media (prefers-color-scheme: light) {
+    .highlighted {
+        background-color: #babdff;
+    }
 }
+
+@media (prefers-color-scheme: dark) {
+    .highlighted {
+        background-color: #747bff;
+    }
+}
+
 
 .outgoing {
     text-decoration: underline;
