@@ -16,7 +16,8 @@ function GltfLine({
   const onMouseLeave= () => setHighlighted(null);
   const path=fragment.path;
 
-  const [contentWhitespace, contentRest] = fragment.content.match(/(\s*)(.*)/)?.slice(1) || ["", ""];
+  const contentWhitespace = "  ".repeat(fragment.indentLevel);
+  const contentRest = fragment.content;
 
   const shouldHighlight = !!path && !!highlighted && path.matchesExactly(highlighted);
   const hasOutgoing = !!fragment.refersTo;
