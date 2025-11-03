@@ -52,7 +52,10 @@ pre {
     }
 }
 
-
 .outgoing {
     text-decoration: underline;
+}
+
+.withPopup {
+    text-decoration: underline dotted;
 }

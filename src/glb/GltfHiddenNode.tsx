@@ -5,7 +5,7 @@ import {SourcePath} from "../annotation/SourcePath.ts";
 interface Props {
   name: string;
   gltf: GLTFNode;
-  highlighted: SourcePath | null;
+  highlighted?: SourcePath;
   onOpen: () => void;
 }
 

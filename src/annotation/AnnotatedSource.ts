@@ -5,5 +5,6 @@ export interface AnnotatedSourceFragment {
   content: string;
   indentLevel: number;
   path: SourcePath;
-  refersTo: SourcePath | null;
+  refersTo?: SourcePath;
+  extraInfo?: string;
 }

@@ -29,7 +29,6 @@ function annotateByJsonParse(gltfJson: string): Record<string, GLTFNode> {
         indentLevel: 0,
         content: line,
         path: new SourcePath([""]),
-        refersTo: null,
       };
     });
     children[attributeName] = {
@@ -60,10 +59,10 @@ function extractChildren(gltf: ObjectNode): Record<string, GLTFNode> {
   return children;
 }
 
-type ReferenceMapper = (rawValue: string) => SourcePath | null;
+type ReferenceMapper = (rawValue: string) => SourcePath | undefined;
 
 function noReference(): ReferenceMapper {
-  return () => null;
+  return () => undefined;
 }
 
 function indexesIn(prefix: string): ReferenceMapper {
@@ -158,6 +157,28 @@ function cleanup(annotatedSource: AnnotatedSource, path: SourcePath): AnnotatedS
   return annotatedSource;
 }
 
+function addExtraInfo(annotatedSource: AnnotatedSource, path: SourcePath): AnnotatedSource {
+  if (path.matches("accessors", null, "componentType")) {
+    if (annotatedSource.length != 1) {
+      return annotatedSource;
+    }
+    const componentTypeValue = annotatedSource[0].content;
+    const result = {
+      "5120": "signed byte (8 bits)",
+      "5121": "unsigned byte (8 bits)",
+      "5122": "signed short (16 bits)",
+      "5123": "unsigned short (16 bits)",
+      "5125": "unsigned int (32 bits)",
+      "5126": "float (32 bits)",
+    }[componentTypeValue] ?? "unknown componentType";
+    return [{
+      ...annotatedSource[0],
+      extraInfo: result
+    }];
+  }
+  return annotatedSource;
+}
+
 function convert(ast: ValueNode, path: SourcePath): AnnotatedSource {
   let annotatedSource;
   switch (ast.type) {
@@ -171,7 +192,8 @@ function convert(ast: ValueNode, path: SourcePath): AnnotatedSource {
       annotatedSource = convertLiteral(ast, path);
       break;
   }
-  return cleanup(annotatedSource, path);
+  const cleanedSource = cleanup(annotatedSource, path);
+  return addExtraInfo(cleanedSource, path);
 }
 
 function convertArray(ast: ArrayNode, path: SourcePath): AnnotatedSource {
@@ -195,14 +217,12 @@ function convertArray(ast: ArrayNode, path: SourcePath): AnnotatedSource {
       indentLevel: 0,
       content: "[",
       path: path,
-      refersTo: null,
     },
     ...annotatedSourceFragments,
     {
       indentLevel: 0,
       content: "]",
       path: path,
-      refersTo: null,
     },
   ];
 }
@@ -220,10 +240,9 @@ function convertObject(ast: ObjectNode, path: SourcePath): AnnotatedSource {
     .map(({ rawKey, key, value }) => {
       return [
         {
-          indentLevel: value[0].indentLevel,
+          ...value[0],
           content: `${rawKey}: ${value[0].content}`,
           path: path.extend(key),
-          refersTo: value[0].refersTo,
         },
         ...value.slice(1),
       ];
@@ -244,14 +263,12 @@ function convertObject(ast: ObjectNode, path: SourcePath): AnnotatedSource {
       indentLevel: 0,
       content: "{",
       path: path,
-      refersTo: null,
     },
     ...annotatedSourceFragments,
     {
       indentLevel: 0,
       content: "}",
       path: path,
-      refersTo: null,
     },
   ];
 }

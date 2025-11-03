@@ -43,7 +43,7 @@ function sortAttributes(nodes: { name: string }[]) {
 }
 
 function GltfRootStructure({ gltf }: Props) {
-  const [highlighted, setHighlighted] = useState<SourcePath | null>(null);
+  const [highlighted, setHighlighted] = useState<SourcePath | undefined>(undefined);
   const [hiddenNodeNames, setHiddenNodeNames] = useState<Set<string>>(initiallyHidden);
 
   const children = [];

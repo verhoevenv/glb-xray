@@ -6,8 +6,8 @@ import {SourcePath} from "../annotation/SourcePath.ts";
 interface Props {
   name: string;
   gltf: GLTFNode;
-  highlighted: SourcePath | null;
-  setHighlighted: (name: SourcePath | null) => void;
+  highlighted: SourcePath | undefined;
+  setHighlighted: (name: SourcePath | undefined) => void;
   onClose: () => void;
 }
 
