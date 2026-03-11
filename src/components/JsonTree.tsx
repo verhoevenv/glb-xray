@@ -4,6 +4,7 @@ import { getMatchingPaths } from '../lib/jsonSearch'
 import { buildBackRefMap } from '../lib/gltfRefs'
 import { NavigationContext } from './NavigationContext'
 import { ImageContext } from './ImageContext'
+import { isDataUri, decodeDataUri } from '../lib/dataUri'
 import styles from './JsonTree.module.css'
 
 interface JsonTreeProps {
@@ -25,13 +26,23 @@ export function JsonTree({ data, binChunk }: JsonTreeProps) {
   const backRefMap = useMemo(() => buildBackRefMap(data), [data])
   const rootKeys = useMemo(() => new Set(Object.keys(data)), [data])
 
+  const extraBuffers = useMemo(() => {
+    const map = new Map<number, Uint8Array>()
+    const buffers = (data?.buffers as Array<Record<string, unknown>> | undefined) ?? []
+    buffers.forEach((buf, i) => {
+      if (typeof buf.uri === 'string' && isDataUri(buf.uri))
+        map.set(i, decodeDataUri(buf.uri))
+    })
+    return map
+  }, [data])
+
   const hasQuery = query.trim().length > 0
 
   const handleCollapseAll = () => { setExpandOverride(false); setExpandRevision(r => r + 1) }
   const handleExpandAll   = () => { setExpandOverride(true);  setExpandRevision(r => r + 1) }
 
   return (
-    <ImageContext.Provider value={{ binChunk: binChunk ?? null, glbJson: data }}>
+    <ImageContext.Provider value={{ binChunk: binChunk ?? null, glbJson: data, extraBuffers }}>
     <NavigationContext.Provider value={{
       navigatePath,
       navigateTo: setNavigatePath,

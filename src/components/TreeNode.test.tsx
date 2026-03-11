@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { TreeNode } from './TreeNode'
+import { ImageContext, type ImageContextValue } from './ImageContext'
 
 describe('TreeNode – primitives', () => {
   it('renders a string value', () => {
@@ -216,7 +217,66 @@ describe('TreeNode – glTF enum annotations', () => {
     render(<TreeNode label="componentType" value="5126" depth={0} fieldName="componentType" />)
     expect(screen.queryByText('FLOAT')).not.toBeInTheDocument()
   })
+})
 
+describe('TreeNode – data URI truncation', () => {
+  it('truncates data URI string leaf display', () => {
+    const dataUri = 'data:image/png;base64,' + 'A'.repeat(200)
+    render(<TreeNode label="uri" value={dataUri} depth={0} />)
+    const leaf = screen.getByTestId('tree-leaf')
+    expect(leaf.textContent).toContain('…')
+    expect(leaf.textContent).not.toContain('A'.repeat(200))
+  })
+
+  it('does not truncate regular strings', () => {
+    render(<TreeNode label="name" value="hello" depth={0} />)
+    expect(screen.getByText('"hello"')).toBeInTheDocument()
+  })
+})
+
+describe('TreeNode – Preview button with data URI image', () => {
+  const baseCtx: ImageContextValue = {
+    binChunk: null,
+    glbJson: null,
+    extraBuffers: new Map(),
+  }
+
+  it('shows Preview button for images[0] with data URI uri field', () => {
+    vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:x'), revokeObjectURL: vi.fn() })
+    const dataUri = 'data:image/png;base64,abc'
+    render(
+      <ImageContext.Provider value={baseCtx}>
+        <TreeNode
+          label="[0]"
+          value={{ uri: dataUri }}
+          depth={1}
+          path="images[0]"
+          defaultExpanded={false}
+        />
+      </ImageContext.Provider>
+    )
+    expect(screen.getByTitle('Preview image 0')).toBeInTheDocument()
+  })
+
+  it('shows Preview button for images[0] with bufferView (regression)', () => {
+    const binChunk = new Uint8Array(10)
+    const ctx: ImageContextValue = { binChunk, glbJson: null, extraBuffers: new Map() }
+    render(
+      <ImageContext.Provider value={ctx}>
+        <TreeNode
+          label="[0]"
+          value={{ bufferView: 0, mimeType: 'image/jpeg' }}
+          depth={1}
+          path="images[0]"
+          defaultExpanded={false}
+        />
+      </ImageContext.Provider>
+    )
+    expect(screen.getByTitle('Preview image 0')).toBeInTheDocument()
+  })
+})
+
+describe('TreeNode – glTF enum annotations (continued)', () => {
   it('wires fieldName through object expansion so child leaf shows annotation', () => {
     render(
       <TreeNode

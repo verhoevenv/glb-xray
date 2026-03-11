@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ImageContext } from './ImageContext'
+import { isDataUri, mimeFromDataUri, decodeDataUri } from '../lib/dataUri'
 import styles from './ImagePreviewModal.module.css'
 
 interface ImagePreviewModalProps {
@@ -15,7 +16,7 @@ function extFromMime(mime: string): string {
 }
 
 export function ImagePreviewModal({ imageIndex, onClose }: ImagePreviewModalProps) {
-  const { binChunk, glbJson } = useContext(ImageContext)
+  const { binChunk, glbJson, extraBuffers } = useContext(ImageContext)
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [mimeType, setMimeType] = useState('image/jpeg')
@@ -23,12 +24,25 @@ export function ImagePreviewModal({ imageIndex, onClose }: ImagePreviewModalProp
 
   useEffect(() => {
     try {
-      if (!binChunk || !glbJson) throw new Error('No binary data available')
+      if (!glbJson) throw new Error('No JSON data available')
 
       const images = glbJson.images as Array<Record<string, unknown>> | undefined
       const image = images?.[imageIndex]
       if (!image) throw new Error(`images[${imageIndex}] not found`)
 
+      // Branch 1: image has a data URI
+      if (typeof image.uri === 'string' && isDataUri(image.uri as string)) {
+        const mime = mimeFromDataUri(image.uri as string)
+        setMimeType(mime)
+        const bytes = decodeDataUri(image.uri as string)
+        const blob = new Blob([bytes], { type: mime })
+        const url = URL.createObjectURL(blob)
+        urlRef.current = url
+        setObjectUrl(url)
+        return
+      }
+
+      // Branch 2: bufferView path
       const bufferViewIndex = image.bufferView
       if (typeof bufferViewIndex !== 'number') throw new Error('Image has no bufferView (may use uri)')
 
@@ -40,7 +54,12 @@ export function ImagePreviewModal({ imageIndex, onClose }: ImagePreviewModalProp
       const byteLength = bufferView.byteLength as number | undefined
       if (typeof byteLength !== 'number') throw new Error('bufferView missing byteLength')
 
-      const bytes = binChunk.subarray(byteOffset, byteOffset + byteLength)
+      const bufferIndex = (bufferView.buffer as number | undefined) ?? 0
+      const buffer =
+        (bufferIndex === 0 && binChunk) ? binChunk : (extraBuffers.get(bufferIndex) ?? null)
+      if (!buffer) throw new Error(`Buffer ${bufferIndex} not available`)
+
+      const bytes = buffer.subarray(byteOffset, byteOffset + byteLength)
       const mime = (image.mimeType as string | undefined) ?? 'image/jpeg'
       setMimeType(mime)
 
@@ -58,7 +77,7 @@ export function ImagePreviewModal({ imageIndex, onClose }: ImagePreviewModalProp
         urlRef.current = null
       }
     }
-  }, [binChunk, glbJson, imageIndex])
+  }, [binChunk, glbJson, imageIndex, extraBuffers])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

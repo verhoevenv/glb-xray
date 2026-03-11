@@ -5,6 +5,7 @@ import { getRefTarget, GLTF_ARRAY_INDEX_FIELDS, GLTF_OBJECT_VALUE_FIELDS } from 
 import { NavigationContext } from './NavigationContext'
 import { ImageContext } from './ImageContext'
 import { ImagePreviewModal } from './ImagePreviewModal'
+import { isDataUri } from '../lib/dataUri'
 
 export type JsonValue =
   | string
@@ -74,7 +75,7 @@ export function TreeNode({
   )
 
   const { navigatePath, navigateTo, getBackRefs, rootKeys } = useContext(NavigationContext)
-  const { binChunk } = useContext(ImageContext)
+  const { binChunk, extraBuffers } = useContext(ImageContext)
   const [previewOpen, setPreviewOpen] = useState(false)
   const rowRef = useRef<HTMLDivElement>(null)
 
@@ -83,13 +84,18 @@ export function TreeNode({
   const imageIndexMatch = path?.match(/^images\[(\d+)\]$/)
   const imageIndex = imageIndexMatch ? parseInt(imageIndexMatch[1], 10) : null
 
+  const imgValue = value as Record<string, unknown>
+  const hasDataUriField =
+    !isLeaf && !Array.isArray(value) &&
+    typeof value === 'object' && value !== null &&
+    typeof imgValue.uri === 'string' && isDataUri(imgValue.uri as string)
+
   const canPreview =
     imageIndex !== null &&
-    !isLeaf &&
-    !Array.isArray(value) &&
+    !isLeaf && !Array.isArray(value) &&
     typeof value === 'object' && value !== null &&
-    'bufferView' in value &&
-    binChunk !== null
+    ('bufferView' in value || hasDataUriField) &&
+    (binChunk !== null || hasDataUriField || extraBuffers.size > 0)
   const indent = depth * 16
 
   // Auto-expand when navigatePath targets this node or a descendant
@@ -152,7 +158,11 @@ export function TreeNode({
             {String(value)}
           </button>
         ) : (
-          <span className={typeClass(value)}>{primitiveLabel(value)}</span>
+          <span className={typeClass(value)}>
+            {typeof value === 'string' && isDataUri(value)
+              ? `"${value.slice(0, 60)}…"`
+              : primitiveLabel(value)}
+          </span>
         )}
         {enumLabel !== undefined && (
           <span className={styles.enumLabel}>{enumLabel}</span>
