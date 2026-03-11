@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import styles from './TreeNode.module.css'
 import { getGltfEnumLabel } from '../lib/gltfEnums'
-import { getRefTarget, GLTF_ARRAY_INDEX_FIELDS } from '../lib/gltfRefs'
+import { getRefTarget, GLTF_ARRAY_INDEX_FIELDS, GLTF_OBJECT_VALUE_FIELDS } from '../lib/gltfRefs'
 import { NavigationContext } from './NavigationContext'
 
 export type JsonValue =
@@ -155,7 +155,9 @@ export function TreeNode({
       }))
 
   // For array children: if this field is in GLTF_ARRAY_INDEX_FIELDS, pass valueRefTarget
-  const childArrayRefTarget = isArray && fieldName ? GLTF_ARRAY_INDEX_FIELDS[fieldName] : undefined
+  const childValueRefTarget = fieldName
+    ? (isArray ? GLTF_ARRAY_INDEX_FIELDS[fieldName] : GLTF_OBJECT_VALUE_FIELDS[fieldName])
+    : undefined
 
   const backRefs = path ? getBackRefs(path) : []
 
@@ -212,7 +214,7 @@ export function TreeNode({
                 fieldName={isArray ? undefined : key}
                 forceExpanded={forceExpanded}
                 path={childPath}
-                valueRefTarget={childArrayRefTarget}
+                valueRefTarget={childValueRefTarget}
               />
             )
           })}

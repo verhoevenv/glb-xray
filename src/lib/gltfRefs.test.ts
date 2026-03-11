@@ -133,4 +133,34 @@ describe('buildBackRefMap', () => {
     const map = buildBackRefMap(json)
     expect(map.size).toBe(0)
   })
+
+  it('builds back-refs for primitive attributes (POSITION, NORMAL, etc.)', () => {
+    const json = {
+      meshes: [
+        {
+          primitives: [
+            { attributes: { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2 } },
+          ],
+        },
+      ],
+      accessors: [{}, {}, {}],
+    }
+    const map = buildBackRefMap(json)
+    expect(map.get('accessors[0]')).toContain('meshes[0].primitives[0].attributes.POSITION')
+    expect(map.get('accessors[1]')).toContain('meshes[0].primitives[0].attributes.NORMAL')
+    expect(map.get('accessors[2]')).toContain('meshes[0].primitives[0].attributes.TEXCOORD_0')
+  })
+
+  it('back-refs from attributes coexist with other accessor back-refs', () => {
+    const json = {
+      meshes: [
+        { primitives: [{ attributes: { POSITION: 0 }, indices: 0 }] },
+      ],
+      accessors: [{}],
+    }
+    const map = buildBackRefMap(json)
+    const refs = map.get('accessors[0]') ?? []
+    expect(refs).toContain('meshes[0].primitives[0].attributes.POSITION')
+    expect(refs).toContain('meshes[0].primitives[0].indices')
+  })
 })

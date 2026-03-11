@@ -25,6 +25,11 @@ export const GLTF_ARRAY_INDEX_FIELDS: Record<string, string> = {
   joints: 'nodes',     // skin.joints
 }
 
+// Object fields where every numeric *value* is an index into the target array
+export const GLTF_OBJECT_VALUE_FIELDS: Record<string, string> = {
+  attributes: 'accessors',  // mesh primitive attributes (POSITION, NORMAL, …)
+}
+
 /** Returns the target path for a forward reference, e.g. "bufferViews[1]" */
 export function getRefTarget(fieldName: string, value: number): string | undefined {
   const arr = GLTF_INDEX_FIELDS[fieldName]
@@ -53,15 +58,15 @@ function walkNode(
   value: unknown,
   path: string,
   fieldName: string | undefined,
-  parentIsArrayIndexField: string | undefined,
+  parentIsIndexField: string | undefined,  // set when every sibling value is an index
   out: BackRefMap,
 ) {
   if (typeof value === 'number') {
     if (fieldName !== undefined && GLTF_INDEX_FIELDS[fieldName] !== undefined) {
       addBackRef(out, `${GLTF_INDEX_FIELDS[fieldName]}[${value}]`, path)
     }
-    if (parentIsArrayIndexField !== undefined) {
-      addBackRef(out, `${parentIsArrayIndexField}[${value}]`, path)
+    if (parentIsIndexField !== undefined) {
+      addBackRef(out, `${parentIsIndexField}[${value}]`, path)
     }
     return
   }
@@ -75,9 +80,10 @@ function walkNode(
   }
 
   if (typeof value === 'object' && value !== null) {
+    const objValueRefTarget = fieldName !== undefined ? GLTF_OBJECT_VALUE_FIELDS[fieldName] : undefined
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
       const childPath = path ? `${path}.${k}` : k
-      walkNode(v, childPath, k, undefined, out)
+      walkNode(v, childPath, k, objValueRefTarget, out)
     }
   }
 }
