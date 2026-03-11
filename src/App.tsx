@@ -2,12 +2,12 @@ import { useState, useCallback } from 'react'
 import { Dropzone } from './components/Dropzone'
 import { JsonTree } from './components/JsonTree'
 import { GlbInfo } from './components/GlbInfo'
-import { parseGlb, CHUNK_TYPE_BIN, type GlbParseResult } from './lib/glbParser'
+import { parseFile, CHUNK_TYPE_BIN, type ParseResult } from './lib/glbParser'
 import styles from './App.module.css'
 
 interface LoadedFile {
   name: string
-  result: GlbParseResult
+  result: ParseResult
 }
 
 export function App() {
@@ -23,7 +23,7 @@ export function App() {
     reader.onload = e => {
       try {
         const buffer = e.target!.result as ArrayBuffer
-        const result = parseGlb(buffer)
+        const result = parseFile(buffer)
         setLoaded({ name: file.name, result })
       } catch (err) {
         setError((err as Error).message)
@@ -81,8 +81,8 @@ export function App() {
             <section className={styles.treePanel}>
               <JsonTree
                 key={loaded.name}
-                data={loaded.result.json}
-                binChunk={loaded.result.chunks.find(c => c.type === CHUNK_TYPE_BIN)?.data ?? null}
+                data={loaded.result.glb.json}
+                binChunk={loaded.result.glb.chunks.find(c => c.type === CHUNK_TYPE_BIN)?.data ?? null}
               />
             </section>
           </div>

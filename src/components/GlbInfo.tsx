@@ -1,21 +1,29 @@
-import type { GlbParseResult } from '../lib/glbParser'
+import type { ParseResult } from '../lib/glbParser'
 import { formatBytes } from '../lib/glbParser'
 import styles from './GlbInfo.module.css'
 
 interface GlbInfoProps {
-  result: GlbParseResult
+  result: ParseResult
   fileName: string
 }
 
 export function GlbInfo({ result, fileName }: GlbInfoProps) {
-  const { header, chunks, hasBinaryChunk, binaryByteLength } = result
+  const { header, chunks, hasBinaryChunk, binaryByteLength } = result.glb
+  const b3dm = result.b3dm
+
+  const fileSize = result.fileType === 'b3dm'
+    ? b3dm!.header.byteLength
+    : header.length
 
   return (
     <div className={styles.panel}>
       <h2 className={styles.filename}>{fileName}</h2>
       <dl className={styles.meta}>
+        <dt>File type</dt>
+        <dd>{result.fileType === 'b3dm' ? 'B3DM' : 'GLB'}</dd>
+
         <dt>File size</dt>
-        <dd>{formatBytes(header.length)}</dd>
+        <dd>{formatBytes(fileSize)}</dd>
 
         <dt>GLB version</dt>
         <dd>{header.version}</dd>
@@ -33,6 +41,35 @@ export function GlbInfo({ result, fileName }: GlbInfoProps) {
           <>
             <dt>Binary buffer</dt>
             <dd>{formatBytes(binaryByteLength)}</dd>
+          </>
+        )}
+
+        {result.fileType === 'b3dm' && b3dm && (
+          <>
+            <dt>B3DM version</dt>
+            <dd>{b3dm.header.version}</dd>
+
+            <dt>Batch length</dt>
+            <dd>{b3dm.batchLength}</dd>
+
+            {b3dm.batchTableJSON !== null && (
+              <>
+                <dt>Batch Table</dt>
+                <dd>
+                  {(() => {
+                    const props = Object.keys(b3dm.batchTableJSON!)
+                    return (
+                      <>
+                        {props.length} {props.length === 1 ? 'property' : 'properties'}: {props.join(', ')}
+                        {b3dm.batchTableBinaryByteLength > 0 && (
+                          <> (binary body: {formatBytes(b3dm.batchTableBinaryByteLength)})</>
+                        )}
+                      </>
+                    )
+                  })()}
+                </dd>
+              </>
+            )}
           </>
         )}
       </dl>

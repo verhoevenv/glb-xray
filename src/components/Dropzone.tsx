@@ -6,7 +6,7 @@ interface DropzoneProps {
   accept?: string
 }
 
-export function Dropzone({ onFile, accept = '.glb' }: DropzoneProps) {
+export function Dropzone({ onFile, accept = '.glb,.b3dm' }: DropzoneProps) {
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -42,7 +42,7 @@ export function Dropzone({ onFile, accept = '.glb' }: DropzoneProps) {
       onClick={() => inputRef.current?.click()}
       role="button"
       tabIndex={0}
-      aria-label="Open GLB file"
+      aria-label="Open GLB or B3DM file"
       onKeyDown={e => {
         if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click()
       }}
@@ -73,7 +73,7 @@ export function Dropzone({ onFile, accept = '.glb' }: DropzoneProps) {
           <line x1="12" y1="3" x2="12" y2="15" />
         </svg>
       </div>
-      <p className={styles.primary}>Drop a GLB file here</p>
+      <p className={styles.primary}>Drop a GLB or B3DM file here</p>
       <p className={styles.secondary}>or click to browse</p>
     </div>
   )

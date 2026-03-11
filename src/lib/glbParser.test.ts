@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
   parseGlb,
+  parseFile,
   formatBytes,
   GlbParseError,
   GLB_MAGIC,
+  B3DM_MAGIC,
   CHUNK_TYPE_JSON,
   CHUNK_TYPE_BIN,
 } from './glbParser'
@@ -156,6 +158,146 @@ describe('parseGlb', () => {
     v.setUint32(16, CHUNK_TYPE_BIN, true)
     u.set(binData, 20)
     expect(() => parseGlb(buf)).toThrow(/No JSON chunk/)
+  })
+})
+
+// ── B3DM helpers ──────────────────────────────────────────────────────────────
+
+function writeUint32LE_b(view: DataView, offset: number, value: number) {
+  view.setUint32(offset, value, true)
+}
+
+/**
+ * Build a minimal valid B3DM buffer wrapping an embedded GLB.
+ *
+ * @param featureTableJSON  Object to embed as feature table JSON (must include BATCH_LENGTH).
+ * @param batchTableJSON    Object to embed as batch table JSON, or null to omit.
+ * @param glbBuf            The GLB buffer to embed.
+ */
+function buildB3dm(
+  featureTableJSON: Record<string, unknown>,
+  batchTableJSON: Record<string, unknown> | null,
+  glbBuf: ArrayBuffer,
+): ArrayBuffer {
+  const encoder = new TextEncoder()
+
+  const ftJsonBytes = encoder.encode(JSON.stringify(featureTableJSON))
+  const ftJsonPadded = Math.ceil(ftJsonBytes.length / 4) * 4
+  const ftJsonPaddedBytes = new Uint8Array(ftJsonPadded)
+  ftJsonPaddedBytes.set(ftJsonBytes)
+  for (let i = ftJsonBytes.length; i < ftJsonPadded; i++) ftJsonPaddedBytes[i] = 0x20
+
+  let btJsonPaddedBytes = new Uint8Array(0)
+  if (batchTableJSON !== null) {
+    const btJsonBytes = encoder.encode(JSON.stringify(batchTableJSON))
+    const btJsonPadded = Math.ceil(btJsonBytes.length / 4) * 4
+    btJsonPaddedBytes = new Uint8Array(btJsonPadded)
+    btJsonPaddedBytes.set(btJsonBytes)
+    for (let i = btJsonBytes.length; i < btJsonPadded; i++) btJsonPaddedBytes[i] = 0x20
+  }
+
+  const totalLength = 28 + ftJsonPaddedBytes.length + btJsonPaddedBytes.length + glbBuf.byteLength
+  const buf = new ArrayBuffer(totalLength)
+  const view = new DataView(buf)
+  const bytes = new Uint8Array(buf)
+
+  writeUint32LE_b(view, 0, B3DM_MAGIC)
+  writeUint32LE_b(view, 4, 1)
+  writeUint32LE_b(view, 8, totalLength)
+  writeUint32LE_b(view, 12, ftJsonPaddedBytes.length)
+  writeUint32LE_b(view, 16, 0) // featureTableBinaryByteLength
+  writeUint32LE_b(view, 20, btJsonPaddedBytes.length)
+  writeUint32LE_b(view, 24, 0) // batchTableBinaryByteLength
+
+  bytes.set(ftJsonPaddedBytes, 28)
+  bytes.set(btJsonPaddedBytes, 28 + ftJsonPaddedBytes.length)
+  bytes.set(new Uint8Array(glbBuf), 28 + ftJsonPaddedBytes.length + btJsonPaddedBytes.length)
+
+  return buf
+}
+
+// ── parseFile ─────────────────────────────────────────────────────────────────
+
+describe('parseFile', () => {
+  it('dispatches to GLB parser for a GLB buffer', () => {
+    const buf = buildGlb('{"asset":{"version":"2.0"}}')
+    const result = parseFile(buf)
+    expect(result.fileType).toBe('glb')
+    expect(result.glb.header.magic).toBe(GLB_MAGIC)
+    expect(result.b3dm).toBeUndefined()
+  })
+
+  it('dispatches to B3DM parser for a B3DM buffer', () => {
+    const glbBuf = buildGlb('{"asset":{"version":"2.0"}}')
+    const b3dmBuf = buildB3dm({ BATCH_LENGTH: 3 }, null, glbBuf)
+    const result = parseFile(b3dmBuf)
+    expect(result.fileType).toBe('b3dm')
+    expect(result.b3dm).toBeDefined()
+  })
+})
+
+// ── parseB3dm (via parseFile) ─────────────────────────────────────────────────
+
+describe('parseB3dm', () => {
+  it('parses header fields correctly', () => {
+    const glbBuf = buildGlb('{"asset":{"version":"2.0"}}')
+    const b3dmBuf = buildB3dm({ BATCH_LENGTH: 5 }, null, glbBuf)
+    const result = parseFile(b3dmBuf)
+    const b3dm = result.b3dm!
+
+    expect(b3dm.header.version).toBe(1)
+    expect(b3dm.header.byteLength).toBe(b3dmBuf.byteLength)
+    expect(b3dm.header.batchTableBinaryByteLength).toBe(0)
+  })
+
+  it('reads BATCH_LENGTH from featureTableJSON', () => {
+    const glbBuf = buildGlb('{"asset":{"version":"2.0"}}')
+    const b3dmBuf = buildB3dm({ BATCH_LENGTH: 7 }, null, glbBuf)
+    const result = parseFile(b3dmBuf)
+    expect(result.b3dm!.batchLength).toBe(7)
+  })
+
+  it('defaults batchLength to 0 when BATCH_LENGTH is absent', () => {
+    const glbBuf = buildGlb('{"asset":{"version":"2.0"}}')
+    const b3dmBuf = buildB3dm({}, null, glbBuf)
+    const result = parseFile(b3dmBuf)
+    expect(result.b3dm!.batchLength).toBe(0)
+  })
+
+  it('sets batchTableJSON to null when batch table is omitted', () => {
+    const glbBuf = buildGlb('{"asset":{"version":"2.0"}}')
+    const b3dmBuf = buildB3dm({ BATCH_LENGTH: 2 }, null, glbBuf)
+    const result = parseFile(b3dmBuf)
+    expect(result.b3dm!.batchTableJSON).toBeNull()
+  })
+
+  it('parses batch table JSON when present', () => {
+    const glbBuf = buildGlb('{"asset":{"version":"2.0"}}')
+    const batchTable = { name: ['a', 'b'], height: [1.0, 2.0] }
+    const b3dmBuf = buildB3dm({ BATCH_LENGTH: 2 }, batchTable, glbBuf)
+    const result = parseFile(b3dmBuf)
+    expect(result.b3dm!.batchTableJSON).toEqual(batchTable)
+  })
+
+  it('successfully parses the embedded GLB', () => {
+    const glbBuf = buildGlb('{"asset":{"version":"2.0"},"meshes":[]}')
+    const b3dmBuf = buildB3dm({ BATCH_LENGTH: 1 }, null, glbBuf)
+    const result = parseFile(b3dmBuf)
+    expect(result.glb.json).toEqual({ asset: { version: '2.0' }, meshes: [] })
+  })
+
+  it('throws on buffer smaller than 28 bytes', () => {
+    const tiny = new ArrayBuffer(20)
+    new DataView(tiny).setUint32(0, B3DM_MAGIC, true)
+    expect(() => parseFile(tiny)).toThrow(GlbParseError)
+    expect(() => parseFile(tiny)).toThrow(/too small/)
+  })
+
+  it('throws on unsupported B3DM version', () => {
+    const glbBuf = buildGlb('{}')
+    const b3dmBuf = buildB3dm({ BATCH_LENGTH: 0 }, null, glbBuf)
+    new DataView(b3dmBuf).setUint32(4, 2, true) // set version to 2
+    expect(() => parseFile(b3dmBuf)).toThrow(/version/)
   })
 })
 
