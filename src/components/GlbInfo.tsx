@@ -73,6 +73,14 @@ export function GlbInfo({ result, fileName }: GlbInfoProps) {
           </>
         )}
       </dl>
+
+      {result.warnings.length > 0 && (
+        <ul className={styles.warnings}>
+          {result.warnings.map((w, i) => (
+            <li key={i} className={styles.warningItem}>{w}</li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

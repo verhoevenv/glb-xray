@@ -299,6 +299,20 @@ describe('parseB3dm', () => {
     new DataView(b3dmBuf).setUint32(4, 2, true) // set version to 2
     expect(() => parseFile(b3dmBuf)).toThrow(/version/)
   })
+
+  it('warns and trims when B3DM buffer has trailing padding beyond GLB declared length', () => {
+    const glbBuf = buildGlb('{"asset":{"version":"2.0"}}')
+    const b3dmBuf = buildB3dm({ BATCH_LENGTH: 1 }, null, glbBuf)
+
+    // Append 4 extra zero bytes beyond b3dm.byteLength
+    const padded = new ArrayBuffer(b3dmBuf.byteLength + 4)
+    new Uint8Array(padded).set(new Uint8Array(b3dmBuf))
+
+    const result = parseFile(padded)
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0]).toMatch(/trailing padding/)
+    expect(result.glb.json).toMatchObject({ asset: { version: '2.0' } })
+  })
 })
 
 // ── formatBytes ───────────────────────────────────────────────────────────────

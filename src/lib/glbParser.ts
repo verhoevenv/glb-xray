@@ -47,6 +47,7 @@ export interface ParseResult {
   fileType: 'glb' | 'b3dm'
   glb: GlbParseResult
   b3dm?: B3dmInfo
+  warnings: string[]
 }
 
 export class GlbParseError extends Error {
@@ -197,7 +198,20 @@ function parseB3dm(buffer: ArrayBuffer): ParseResult {
     batchTableJSON = JSON.parse(decoder.decode(bytes).trimEnd())
   }
 
-  const glbBuffer = buffer.slice(glbStart)
+  const warnings: string[] = []
+  let glbBuffer = buffer.slice(glbStart)
+
+  if (glbBuffer.byteLength >= 12) {
+    const glbDeclaredLength = new DataView(glbBuffer).getUint32(8, true)
+    if (glbBuffer.byteLength > glbDeclaredLength) {
+      const excess = glbBuffer.byteLength - glbDeclaredLength
+      warnings.push(
+        `Embedded GLB has ${excess} trailing padding byte${excess === 1 ? '' : 's'} — truncated to declared length (${glbDeclaredLength} bytes).`
+      )
+      glbBuffer = glbBuffer.slice(0, glbDeclaredLength)
+    }
+  }
+
   const glbResult = parseGlb(glbBuffer)
 
   const batchLength = typeof featureTableJSON.BATCH_LENGTH === 'number'
@@ -214,6 +228,7 @@ function parseB3dm(buffer: ArrayBuffer): ParseResult {
       batchTableBinaryByteLength,
       batchLength,
     },
+    warnings,
   }
 }
 
@@ -221,7 +236,7 @@ export function parseFile(buffer: ArrayBuffer): ParseResult {
   const view = new DataView(buffer)
   const magic = view.getUint32(0, true)
   if (magic === B3DM_MAGIC) return parseB3dm(buffer)
-  return { fileType: 'glb', glb: parseGlb(buffer) }
+  return { fileType: 'glb', glb: parseGlb(buffer), warnings: [] }
 }
 
 export function formatBytes(bytes: number): string {
