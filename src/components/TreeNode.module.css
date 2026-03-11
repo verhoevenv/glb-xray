@@ -135,3 +135,24 @@
 .navTarget {
   animation: navFlash 1s ease-out forwards;
 }
+
+.previewBtn {
+  margin-left: auto;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: 10px;
+  font-family: inherit;
+  padding: 1px 6px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.1s, border-color 0.1s;
+}
+
+.row:hover .previewBtn,
+.previewBtn:focus-visible {
+  opacity: 1;
+  border-color: var(--color-accent);
+}

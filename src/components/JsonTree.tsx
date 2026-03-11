@@ -3,13 +3,15 @@ import { TreeNode, type JsonValue } from './TreeNode'
 import { getMatchingPaths } from '../lib/jsonSearch'
 import { buildBackRefMap } from '../lib/gltfRefs'
 import { NavigationContext } from './NavigationContext'
+import { ImageContext } from './ImageContext'
 import styles from './JsonTree.module.css'
 
 interface JsonTreeProps {
   data: Record<string, unknown>
+  binChunk?: Uint8Array | null
 }
 
-export function JsonTree({ data }: JsonTreeProps) {
+export function JsonTree({ data, binChunk }: JsonTreeProps) {
   const [query, setQuery] = useState('')
   const [expandOverride, setExpandOverride] = useState<boolean | undefined>(false)
   const [expandRevision, setExpandRevision] = useState(0)
@@ -29,6 +31,7 @@ export function JsonTree({ data }: JsonTreeProps) {
   const handleExpandAll   = () => { setExpandOverride(true);  setExpandRevision(r => r + 1) }
 
   return (
+    <ImageContext.Provider value={{ binChunk: binChunk ?? null, glbJson: data }}>
     <NavigationContext.Provider value={{
       navigatePath,
       navigateTo: setNavigatePath,
@@ -72,5 +75,6 @@ export function JsonTree({ data }: JsonTreeProps) {
         </div>
       </div>
     </NavigationContext.Provider>
+    </ImageContext.Provider>
   )
 }

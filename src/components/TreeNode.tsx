@@ -3,6 +3,8 @@ import styles from './TreeNode.module.css'
 import { getGltfEnumLabel } from '../lib/gltfEnums'
 import { getRefTarget, GLTF_ARRAY_INDEX_FIELDS, GLTF_OBJECT_VALUE_FIELDS } from '../lib/gltfRefs'
 import { NavigationContext } from './NavigationContext'
+import { ImageContext } from './ImageContext'
+import { ImagePreviewModal } from './ImagePreviewModal'
 
 export type JsonValue =
   | string
@@ -72,9 +74,22 @@ export function TreeNode({
   )
 
   const { navigatePath, navigateTo, getBackRefs, rootKeys } = useContext(NavigationContext)
+  const { binChunk } = useContext(ImageContext)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const rowRef = useRef<HTMLDivElement>(null)
 
   const isLeaf = isPrimitive(value)
+
+  const imageIndexMatch = path?.match(/^images\[(\d+)\]$/)
+  const imageIndex = imageIndexMatch ? parseInt(imageIndexMatch[1], 10) : null
+
+  const canPreview =
+    imageIndex !== null &&
+    !isLeaf &&
+    !Array.isArray(value) &&
+    typeof value === 'object' && value !== null &&
+    'bufferView' in value &&
+    binChunk !== null
   const indent = depth * 16
 
   // Auto-expand when navigatePath targets this node or a descendant
@@ -198,7 +213,22 @@ export function TreeNode({
             )}
           </span>
         )}
+        {canPreview && (
+          <button
+            className={styles.previewBtn}
+            onClick={e => { e.stopPropagation(); setPreviewOpen(true) }}
+            title={`Preview image ${imageIndex}`}
+          >
+            Preview
+          </button>
+        )}
       </div>
+      {previewOpen && imageIndex !== null && (
+        <ImagePreviewModal
+          imageIndex={imageIndex}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
       {expanded && (
         <div data-testid="tree-children">
           {children.map(({ key, value: childValue }) => {
