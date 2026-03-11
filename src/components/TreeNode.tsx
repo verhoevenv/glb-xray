@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import styles from './TreeNode.module.css'
+import { getGltfEnumLabel } from '../lib/gltfEnums'
 
 export type JsonValue =
   | string
@@ -15,6 +16,7 @@ interface TreeNodeProps {
   depth: number
   defaultExpanded?: boolean
   highlighted?: boolean
+  fieldName?: string
 }
 
 function isPrimitive(v: JsonValue): v is string | number | boolean | null {
@@ -50,6 +52,7 @@ export function TreeNode({
   depth,
   defaultExpanded = depth < 2,
   highlighted = false,
+  fieldName,
 }: TreeNodeProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
 
@@ -57,6 +60,10 @@ export function TreeNode({
   const indent = depth * 16
 
   if (isLeaf) {
+    const enumLabel =
+      fieldName !== undefined && typeof value === 'number'
+        ? getGltfEnumLabel(fieldName, value)
+        : undefined
     return (
       <div
         className={`${styles.row} ${highlighted ? styles.highlighted : ''}`}
@@ -66,6 +73,9 @@ export function TreeNode({
         <span className={styles.key}>{label}</span>
         <span className={styles.colon}>: </span>
         <span className={typeClass(value)}>{primitiveLabel(value)}</span>
+        {enumLabel !== undefined && (
+          <span className={styles.enumLabel}>{enumLabel}</span>
+        )}
       </div>
     )
   }
@@ -104,6 +114,7 @@ export function TreeNode({
               label={Array.isArray(value) ? `[${key}]` : key}
               value={childValue}
               depth={depth + 1}
+              fieldName={key}
             />
           ))}
         </div>

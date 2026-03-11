@@ -140,3 +140,47 @@ describe('TreeNode – highlighting', () => {
     expect(leaf.className).toMatch(/highlighted/)
   })
 })
+
+describe('TreeNode – glTF enum annotations', () => {
+  it('shows FLOAT for componentType=5126', () => {
+    render(<TreeNode label="componentType" value={5126} depth={0} fieldName="componentType" />)
+    expect(screen.getByText('FLOAT')).toBeInTheDocument()
+  })
+
+  it('shows TRIANGLES for mode=4', () => {
+    render(<TreeNode label="mode" value={4} depth={0} fieldName="mode" />)
+    expect(screen.getByText('TRIANGLES')).toBeInTheDocument()
+  })
+
+  it('does not render annotation for unrecognized value', () => {
+    render(<TreeNode label="componentType" value={9999} depth={0} fieldName="componentType" />)
+    expect(screen.queryByText(/^[A-Z_]+$/)).not.toBeInTheDocument()
+  })
+
+  it('does not render annotation when fieldName is not provided', () => {
+    render(<TreeNode label="componentType" value={5126} depth={0} />)
+    expect(screen.queryByText('FLOAT')).not.toBeInTheDocument()
+  })
+
+  it('does not render annotation for non-enum key with same numeric value', () => {
+    render(<TreeNode label="someKey" value={5126} depth={0} fieldName="someKey" />)
+    expect(screen.queryByText('FLOAT')).not.toBeInTheDocument()
+  })
+
+  it('does not render annotation for string value even with matching fieldName', () => {
+    render(<TreeNode label="componentType" value="5126" depth={0} fieldName="componentType" />)
+    expect(screen.queryByText('FLOAT')).not.toBeInTheDocument()
+  })
+
+  it('wires fieldName through object expansion so child leaf shows annotation', () => {
+    render(
+      <TreeNode
+        label="accessor"
+        value={{ componentType: 5126 }}
+        depth={0}
+        defaultExpanded
+      />
+    )
+    expect(screen.getByText('FLOAT')).toBeInTheDocument()
+  })
+})
