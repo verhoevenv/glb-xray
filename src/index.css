@@ -1,0 +1,84 @@
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: dark;
+
+  --color-bg:            #0d0d0f;
+  --color-surface:       #131316;
+  --color-border:        #2a2a2e;
+  --color-hover:         rgba(255,255,255,0.04);
+  --color-highlight:     rgba(99,179,237,0.12);
+
+  --color-text:          #e2e8f0;
+  --color-muted:         #718096;
+  --color-accent:        #63b3ed;
+
+  --color-key:           #90cdf4;
+  --color-string:        #68d391;
+  --color-number:        #f6ad55;
+  --color-boolean:       #fc8181;
+  --color-null:          #718096;
+
+  --color-input-bg:      #1a1a1e;
+  --color-chip-bg:       #1e1e22;
+
+  --color-error-bg:      rgba(254,178,178,0.08);
+  --color-error-border:  rgba(254,178,178,0.3);
+  --color-error-text:    #fc8181;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+
+    --color-bg:            #f7f8fa;
+    --color-surface:       #ffffff;
+    --color-border:        #e2e8f0;
+    --color-hover:         rgba(0,0,0,0.03);
+    --color-highlight:     rgba(49,130,206,0.1);
+
+    --color-text:          #1a202c;
+    --color-muted:         #718096;
+    --color-accent:        #3182ce;
+
+    --color-key:           #2b6cb0;
+    --color-string:        #276749;
+    --color-number:        #c05621;
+    --color-boolean:       #c53030;
+    --color-null:          #718096;
+
+    --color-input-bg:      #f7f8fa;
+    --color-chip-bg:       #edf2f7;
+
+    --color-error-bg:      #fff5f5;
+    --color-error-border:  #fc8181;
+    --color-error-text:    #c53030;
+  }
+}
+
+/* ── Reset / base ──────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+}
