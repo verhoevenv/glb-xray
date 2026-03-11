@@ -17,6 +17,7 @@ interface TreeNodeProps {
   defaultExpanded?: boolean
   highlighted?: boolean
   fieldName?: string
+  forceExpanded?: boolean
 }
 
 function isPrimitive(v: JsonValue): v is string | number | boolean | null {
@@ -53,8 +54,11 @@ export function TreeNode({
   defaultExpanded = depth < 2,
   highlighted = false,
   fieldName,
+  forceExpanded,
 }: TreeNodeProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded)
+  const [expanded, setExpanded] = useState(
+    forceExpanded !== undefined ? forceExpanded : defaultExpanded
+  )
 
   const isLeaf = isPrimitive(value)
   const indent = depth * 16
@@ -115,6 +119,7 @@ export function TreeNode({
               value={childValue}
               depth={depth + 1}
               fieldName={key}
+              forceExpanded={forceExpanded}
             />
           ))}
         </div>

@@ -79,7 +79,7 @@ export function App() {
               <GlbInfo result={loaded.result} fileName={loaded.name} />
             </aside>
             <section className={styles.treePanel}>
-              <JsonTree data={loaded.result.json} />
+              <JsonTree key={loaded.name} data={loaded.result.json} />
             </section>
           </div>
         )}

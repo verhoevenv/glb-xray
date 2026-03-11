@@ -9,6 +9,8 @@ interface JsonTreeProps {
 
 export function JsonTree({ data }: JsonTreeProps) {
   const [query, setQuery] = useState('')
+  const [expandOverride, setExpandOverride] = useState<boolean | undefined>(false)
+  const [expandRevision, setExpandRevision] = useState(0)
 
   const matchingPaths = useMemo(
     () => getMatchingPaths(data, query),
@@ -16,6 +18,9 @@ export function JsonTree({ data }: JsonTreeProps) {
   )
 
   const hasQuery = query.trim().length > 0
+
+  const handleCollapseAll = () => { setExpandOverride(false); setExpandRevision(r => r + 1) }
+  const handleExpandAll   = () => { setExpandOverride(true);  setExpandRevision(r => r + 1) }
 
   return (
     <div className={styles.container}>
@@ -34,15 +39,20 @@ export function JsonTree({ data }: JsonTreeProps) {
             {matchingPaths.size === 0 ? 'No matches' : `${matchingPaths.size} path${matchingPaths.size !== 1 ? 's' : ''}`}
           </span>
         )}
+        <div className={styles.expandButtons}>
+          <button className={styles.expandBtn} onClick={handleCollapseAll} title="Collapse all">Collapse all</button>
+          <button className={styles.expandBtn} onClick={handleExpandAll}   title="Expand all">Expand all</button>
+        </div>
       </div>
       <div className={styles.tree} role="tree">
         {Object.entries(data).map(([key, value]) => (
           <TreeNode
-            key={key}
+            key={`${key}-${expandRevision}`}
             label={key}
             value={value as JsonValue}
             depth={0}
             defaultExpanded={hasQuery ? matchingPaths.has(key) : undefined}
+            forceExpanded={hasQuery ? undefined : expandOverride}
             highlighted={hasQuery && matchingPaths.has(key)}
           />
         ))}

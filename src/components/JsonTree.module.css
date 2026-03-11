@@ -48,3 +48,33 @@
   padding: 8px 0;
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
 }
+
+.expandButtons {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.expandBtn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 3px 8px;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.expandBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+  background: var(--color-hover);
+}
+
+.expandBtn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}

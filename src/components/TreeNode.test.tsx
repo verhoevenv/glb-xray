@@ -141,6 +141,51 @@ describe('TreeNode – highlighting', () => {
   })
 })
 
+describe('TreeNode – forceExpanded prop', () => {
+  it('forceExpanded=true at high depth starts expanded (overrides depth < 2 default)', () => {
+    render(
+      <TreeNode label="deep" value={{ x: 1 }} depth={5} forceExpanded={true} />
+    )
+    expect(screen.getByTestId('tree-children')).toBeInTheDocument()
+  })
+
+  it('forceExpanded=false at depth 0 starts collapsed (overrides depth < 2 default)', () => {
+    render(
+      <TreeNode label="root" value={{ x: 1 }} depth={0} forceExpanded={false} />
+    )
+    expect(screen.queryByTestId('tree-children')).not.toBeInTheDocument()
+  })
+
+  it('forceExpanded=undefined falls back to defaultExpanded', () => {
+    render(
+      <TreeNode label="root" value={{ x: 1 }} depth={5} defaultExpanded={true} forceExpanded={undefined} />
+    )
+    expect(screen.getByTestId('tree-children')).toBeInTheDocument()
+  })
+
+  it('user can still toggle after forceExpanded sets initial state', () => {
+    render(
+      <TreeNode label="root" value={{ x: 1 }} depth={0} forceExpanded={false} />
+    )
+    expect(screen.queryByTestId('tree-children')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button'))
+    expect(screen.getByTestId('tree-children')).toBeInTheDocument()
+  })
+
+  it('forceExpanded propagates: grandchild content visible with forceExpanded=true', () => {
+    render(
+      <TreeNode
+        label="root"
+        value={{ child: { grandchild: 42 } }}
+        depth={0}
+        forceExpanded={true}
+      />
+    )
+    expect(screen.getByText('grandchild')).toBeInTheDocument()
+    expect(screen.getByText('42')).toBeInTheDocument()
+  })
+})
+
 describe('TreeNode – glTF enum annotations', () => {
   it('shows FLOAT for componentType=5126', () => {
     render(<TreeNode label="componentType" value={5126} depth={0} fieldName="componentType" />)
