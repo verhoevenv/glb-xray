@@ -44,7 +44,7 @@ export function ImagePreviewModal({ imageIndex, onClose }: ImagePreviewModalProp
       const mime = (image.mimeType as string | undefined) ?? 'image/jpeg'
       setMimeType(mime)
 
-      const blob = new Blob([bytes], { type: mime })
+      const blob = new Blob([(bytes.buffer as ArrayBuffer).slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)], { type: mime })
       const url = URL.createObjectURL(blob)
       urlRef.current = url
       setObjectUrl(url)
