@@ -221,11 +221,13 @@ describe('TreeNode – glTF enum annotations', () => {
 
 describe('TreeNode – data URI truncation', () => {
   it('truncates data URI string leaf display', () => {
-    const dataUri = 'data:image/png;base64,' + 'A'.repeat(200)
+    const dataUri = 'data:image/png;base64,' + 'A'.repeat(2000)
     render(<TreeNode label="uri" value={dataUri} depth={0} />)
     const leaf = screen.getByTestId('tree-leaf')
     expect(leaf.textContent).toContain('…')
     expect(leaf.textContent).not.toContain('A'.repeat(200))
+    expect(leaf.textContent).toContain('KB')
+    expect(leaf.textContent).toContain('decoded')
   })
 
   it('does not truncate regular strings', () => {

@@ -76,6 +76,14 @@
   flex-shrink: 0;
 }
 
+.dataUriInfo {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--color-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .refLink {
   background: none;
   border: none;

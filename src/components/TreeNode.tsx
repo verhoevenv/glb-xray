@@ -5,7 +5,7 @@ import { getRefTarget, GLTF_ARRAY_INDEX_FIELDS, GLTF_OBJECT_VALUE_FIELDS } from 
 import { NavigationContext } from './NavigationContext'
 import { ImageContext } from './ImageContext'
 import { ImagePreviewModal } from './ImagePreviewModal'
-import { isDataUri } from '../lib/dataUri'
+import { isDataUri, formatBytes, dataUriDecodedSize } from '../lib/dataUri'
 
 export type JsonValue =
   | string
@@ -157,12 +157,15 @@ export function TreeNode({
           >
             {String(value)}
           </button>
+        ) : typeof value === 'string' && isDataUri(value) ? (
+          <>
+            <span className={typeClass(value)}>{`"${value.slice(0, 60)}…"`}</span>
+            <span className={styles.dataUriInfo}>
+              ({formatBytes(value.length)}, {formatBytes(dataUriDecodedSize(value))} decoded)
+            </span>
+          </>
         ) : (
-          <span className={typeClass(value)}>
-            {typeof value === 'string' && isDataUri(value)
-              ? `"${value.slice(0, 60)}…"`
-              : primitiveLabel(value)}
-          </span>
+          <span className={typeClass(value)}>{primitiveLabel(value)}</span>
         )}
         {enumLabel !== undefined && (
           <span className={styles.enumLabel}>{enumLabel}</span>
