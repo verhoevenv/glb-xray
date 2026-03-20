@@ -254,8 +254,9 @@ export function TreeNode({
                 label={isArray ? `[${key}]` : key}
                 value={childValue}
                 depth={depth + 1}
+                defaultExpanded={children.length === 1 ? true : false}
                 fieldName={isArray ? undefined : key}
-                forceExpanded={forceExpanded}
+                forceExpanded={forceExpanded === true ? true : undefined}
                 path={childPath}
                 valueRefTarget={childValueRefTarget}
               />
